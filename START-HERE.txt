@@ -1,0 +1,31 @@
+Sports Day MVP — Full Source Code
+
+This archive contains the application source, database schema and migration,
+workflow tests, lockfile, and build configuration. Dependencies, generated
+builds, credentials, and database records are excluded.
+
+Requirements: Node.js 22.13 or later and pnpm.
+1. Extract this ZIP.
+2. Open a terminal in the sports-day folder.
+3. Run: pnpm install
+4. Run: pnpm dev
+
+Important: The application requires a Cloudflare D1 database and the Sites
+ChatGPT identity integration. A local preview is not a standalone installation
+of the hosted service. For another host, configure D1 and replace the identity
+integration with your own server-verified authentication.
+
+The current owner email used for first-time initialization is in
+app/api/event/route.ts. Configure your own owner identity when adapting it.
+
+Main files:
+app/page.tsx — registration, coach entry, admin review, leaderboard
+app/api/event/route.ts — server authorization and event operations
+app/globals.css — responsive layout and print styling
+db/schema.ts and drizzle/ — database schema and migration
+tests/workflow.mjs — workflow and permission checks
+
+Checks: pnpm exec tsc --noEmit; node tests/workflow.mjs
+
+The hosted application remains available at:
+https://sports-day-event-desk.robustpearl64.chatgpt.site

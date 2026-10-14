@@ -1,0 +1,4 @@
+# Local email config (Resend). Copy to .dev.vars and fill in. Never commit .dev.vars.
+# RESEND_API_KEY=re_your_key_here
+# EMAIL_FROM=Field Day <events@yourdomain.com>
+# APP_URL=http://localhost:5173
