@@ -2,7 +2,8 @@ import { appEnv as env } from '../../../lib/env';
 import {textl,normEmail,normPhone} from '../../../lib/registration';
 import {hashPassword,verifyPassword,parseSessionCookie,sessionCookie,STAFF_SESSION_TTL_MS} from '../../../lib/staff-auth';
 import {getDb} from '../../../lib/db';
-const fresh=()=>({title:'Kore challenge 2026',activities:Array.from({length:6},(_,i)=>({id:'a'+i,name:['100m Sprint','Obstacle Run','Long Jump','Relay Race','Team Challenge','Target Throw'][i],type:i===3||i===4?'team':'individual',metric:i===2?'distance':i===5||i===4?'score':'time',closed:false})),entries:[],results:[],coaches:[],admins:[],sessions:[],audit:[],ownerEmail:''});
+const zones=()=>Array.from({length:5},(_,i)=>({id:'a'+i,name:['Rowing Challenge','Ski Challenge','Sandbag Challenge','Plank Challenge','Push-Up Challenge'][i],type:'individual',metric:['time','time','score','duration','score'][i],closed:false}));
+const fresh=()=>({title:'Kore challenge 2026',activities:zones(),entries:[],results:[],coaches:[],admins:[],sessions:[],audit:[],ownerEmail:''});
 async function openDb(){const db=getDb();await db.prepare("CREATE TABLE IF NOT EXISTS `event` (`id` integer PRIMARY KEY NOT NULL, `owner` text NOT NULL, `revision` integer DEFAULT 0 NOT NULL, `data` text NOT NULL)").run();const row:any=await db.prepare('SELECT * FROM event WHERE id=1').first();if(!row)return {db,row:null,state:null};const s=JSON.parse(row.data);if(!Array.isArray(s.sessions))s.sessions=[];if(!Array.isArray(s.admins))s.admins=[];if(!Array.isArray(s.coaches))s.coaches=[];return {db,row,state:s};}
 const needsSetup=(c:any)=>!c.row||!c.state.ownerEmail;
 async function save(c:any){if(!c.row)await c.db.prepare('INSERT OR IGNORE INTO event (id,owner,revision,data) VALUES (1,?,0,?)').bind('password-owner',JSON.stringify(c.state)).run();else await c.db.prepare('UPDATE event SET data=?,revision=revision+1 WHERE id=1').bind(JSON.stringify(c.state)).run();}
