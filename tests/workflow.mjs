@@ -126,6 +126,9 @@ assert.equal((await send({action:'removeEntry',id:'SD-NOPE'})).status,400);
 assert.equal((await send({action:'entry',name:'NoGender',email:'ng@test.com',phone:'+923008181818',age:20,type:'individual'})).status,400);
 assert.equal(state().entries.find((e)=>e.id===emId).gender,'male');
 const temail=await send({action:'testEmail',to:'t@t.com'});assert.equal(temail.status,200);assert.equal(temail.body.email,'sent');assert.equal(temail.body.detail,'');
+const re404=await send({action:'resendEntry',id:'SD-NOPE'});assert.equal(re404.status,400);
+const re=await send({action:'resendEntry',id:emId});assert.equal(re.status,200);assert.equal(re.body.email,'sent');
+assert.ok(emailOut.some((m)=>m.body.to.includes('em@test.com')));
 // ---- public self-registration route ----
 const db2=makeDb();
 const staff2=loadRoute('app/api/staff-login/route.ts',{env:{DB:db2}});
