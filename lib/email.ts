@@ -60,7 +60,7 @@ const qrUrl = (ref: string) =>
 
 const logos = (base: string) =>
   base
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 6px"><tr><td align="left" width="50%" style="vertical-align:middle"><img src="${base}/Onplan%20logo.png" alt="Onplan Real Estate" height="48" style="display:inline-block"/></td><td align="right" width="50%" style="vertical-align:middle"><span style="display:inline-block;background:#123c3e;border-radius:8px;padding:6px 12px"><img src="${base}/Imtiaz%20logo.svg" alt="Imtiaz" height="36" style="display:inline-block"/></span></td></tr></table>`
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 6px"><tr><td align="left" width="50%" style="vertical-align:middle"><img src="${base}/Onplan%20logo.png" alt="Onplan Real Estate" height="48" style="display:inline-block"/></td><td align="right" width="50%" style="vertical-align:middle"><img src="${base}/Imtiaz%20logo.svg" alt="Imtiaz" height="48" style="display:inline-block"/></td></tr></table>`
     : '';
 
 const shell = (preheader: string, body: string) =>
