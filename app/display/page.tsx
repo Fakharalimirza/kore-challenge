@@ -1,0 +1,44 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {QRCodeSVG} from 'qrcode.react';
+type Item=any;
+const SLIDE_MS=15000;
+function fmtV(m:string,v:number){if(m!=='duration')return v;const s=Math.floor(v);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+function ranks(rows:Item[],m:string){const sorted=[...rows].sort((x:Item,y:Item)=>m==='time'?x.value-y.value:y.value-x.value);return sorted.map((r:Item)=>({...r,rank:sorted.findIndex((x:Item)=>x.value===r.value)+1}));}
+function top5(rows:Item[],m:string,g:string){return ranks(rows.filter((r:Item)=>(r.gender||'')===g),m).slice(0,3);}
+// TEMP MOCK DATA for layout finalization — remove before the event (also remove ?mock=1 usage).
+const MOCK:Record<string,Item[]>={a0:[{entry:'m1',name:'Ahmed Khan',org:'Onplan',gender:'male',value:96.4},{entry:'m2',name:'Bilal Ahmed',org:'Imtiaz',gender:'male',value:101.2},{entry:'m3',name:'Omar Farooq',org:'Onplan',gender:'male',value:104.7},{entry:'f1',name:'Fatima Noor',org:'Imtiaz',gender:'female',value:108.3},{entry:'f2',name:'Sara Ali',org:'Onplan',gender:'female',value:112.9},{entry:'f3',name:'Layla Hassan',org:'Imtiaz',gender:'female',value:115.5}],a1:[{entry:'m4',name:'Khalid Mahmood',org:'Onplan',gender:'male',value:242.6},{entry:'m5',name:'Hassan Raza',org:'Imtiaz',gender:'male',value:251.3},{entry:'m6',name:'Usman Tariq',org:'Onplan',gender:'male',value:258.9},{entry:'f4',name:'Ayesha Khan',org:'Imtiaz',gender:'female',value:267.4},{entry:'f5',name:'Mariam Said',org:'Onplan',gender:'female',value:274.1},{entry:'f6',name:'Noor Fatima',org:'Imtiaz',gender:'female',value:281.8}],a2:[{entry:'m7',name:'Ali Raza',org:'Onplan',gender:'male',value:58},{entry:'m8',name:'Danish Ali',org:'Imtiaz',gender:'male',value:54},{entry:'m9',name:'Fahad Khan',org:'Onplan',gender:'male',value:51},{entry:'f7',name:'Hira Shah',org:'Imtiaz',gender:'female',value:47},{entry:'f8',name:'Sana Malik',org:'Onplan',gender:'female',value:44},{entry:'f9',name:'Iqra Ahmed',org:'Imtiaz',gender:'female',value:42}],a3:[{entry:'m10',name:'Imran Sheikh',org:'Onplan',gender:'male',value:312},{entry:'m11',name:'Nabeel Akhtar',org:'Imtiaz',gender:'male',value:298},{entry:'m12',name:'Shahid Afridi',org:'Onplan',gender:'male',value:285},{entry:'f10',name:'Mehwish Hayat',org:'Imtiaz',gender:'female',value:276},{entry:'f11',name:'Amina Tariq',org:'Onplan',gender:'female',value:264},{entry:'f12',name:'Zara Sheikh',org:'Imtiaz',gender:'female',value:251}],a4:[{entry:'m13',name:'Adnan Sami',org:'Onplan',gender:'male',value:78},{entry:'m14',name:'Kamran Shah',org:'Imtiaz',gender:'male',value:74},{entry:'m15',name:'Waqas Anwar',org:'Onplan',gender:'male',value:70},{entry:'f13',name:'Sadia Khan',org:'Imtiaz',gender:'female',value:61},{entry:'f14',name:'Rabia Aslam',org:'Onplan',gender:'female',value:61},{entry:'f15',name:'Nadia Hussain',org:'Imtiaz',gender:'female',value:58}]};
+function pad(n:number){return String(n).padStart(2,'0');}
+function clock(ms:number){const d=new Date(ms);return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());}
+function dmy(ms:number){const d=new Date(ms);return pad(d.getDate())+'-'+pad(d.getMonth()+1)+'-'+d.getFullYear();}
+function countdown(ms:number){if(ms<=0)return null;const s=Math.floor(ms/1000);const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;return (h?h+'h ':'')+m+'m '+pad(ss)+'s';}
+export default function Display(){const [d,setD]=useState<Item>(null),[err,setErr]=useState(''),[slide,setSlide]=useState(0),[leaving,setLeaving]=useState(false),[now,setNow]=useState(Date.now()),[origin,setOrigin]=useState(''),[mock,setMock]=useState(false);
+async function load(){try{const r=await fetch('/api/standings');const j:any=await r.json();if(!r.ok)throw Error(j.error);setD(j);setErr('');}catch(e:any){setErr(e.message);}}
+useEffect(()=>{setOrigin(window.location.origin);try{if(new URLSearchParams(window.location.search).get('mock')==='1')setMock(true);}catch{}document.body.style.background='#161616';document.documentElement.style.overflowX='clip';load();const t=setInterval(load,5000);const c=setInterval(()=>setNow(Date.now()),1000);return()=>{clearInterval(t);clearInterval(c);document.body.style.background='';document.documentElement.style.overflowX='';};},[]);
+const zonesRaw:Item[]=d?.zones||[];
+const zones=mock?zonesRaw.map((z:Item)=>({...z,closed:z.id==='a3'?true:z.closed,results:z.results.length>=6?z.results:(MOCK[z.id]||z.results)})):zonesRaw;
+const finals=zones.filter((z:Item)=>z.closed);
+let startMs=0,endMs=0;try{if(d?.times?.date&&d?.times?.start)startMs=Date.parse(d.times.date+'T'+d.times.start+':00');if(d?.times?.date&&d?.times?.end)endMs=Date.parse(d.times.date+'T'+d.times.end+':00');}catch{};const inThanksWindow=!startMs||(endMs?now>=endMs-15*60*1000:true);
+const showWelcome=mock||(startMs?now<startMs:false);
+const showThanks=mock||inThanksWindow;
+const VIDEOS:Record<string,string>={video:'/all%20logo%20video.mp4',video2:'/activities%20video.mp4'};
+const slides:Item[]=[{k:'video'},{k:'video2'},...(showWelcome?[{k:'welcome'}]:[]),...zones.map((z:Item)=>({k:'zone:'+z.id,z})),...(finals.length?[{k:'champs'}]:[]),...(showThanks?[{k:'thanks'}]:[])];
+useEffect(()=>{if(slides.length<2)return;let to:any=null;const t=setInterval(()=>{setLeaving(true);to=setTimeout(()=>{setSlide(s=>(s+1)%slides.length);setLeaving(false);},450);},SLIDE_MS);return()=>{clearInterval(t);if(to)clearTimeout(to);};},[slides.length]);
+const cur=slides.length?slides[Math.min(slide,slides.length-1)]:{k:'welcome'};
+// event times are parsed above
+const allFinal=zones.length>0&&zones.every((z:Item)=>z.closed);
+const phase=!startMs?'live':now<startMs?'pre':(allFinal||(endMs&&now>endMs)?'finale':'live');
+if(!d)return <main className="dshow"><div className="dslide"><p>{err||'Connecting to the event…'}</p></div></main>;
+return <main className="dshow">
+{cur.k!=='thanks'&&!VIDEOS[cur.k]&&<div className="dtop"><img src="/Onplan%20logo%20white.png" alt="Onplan Real Estate"/><h1 className="dtitle">Kore fitness challenge</h1><img src="/Imtiaz%20logo.svg" alt="Imtiaz"/></div>}
+{!VIDEOS[cur.k]&&cur.k!=='thanks'&&<div className="dprogress"><i style={{animationDuration:(SLIDE_MS/1000)+'s'}} key={slide}/></div>}
+<div className={'dslide'+(leaving?' leaving':'')} key={cur.k}>
+{VIDEOS[cur.k]&&<div className="dvideo"><video src={VIDEOS[cur.k]} autoPlay muted loop playsInline preload="auto"/></div>}
+{cur.k==='welcome'&&<><h1>Kore fitness challenge</h1><p className="dsub">Onplan Real Estate | Imtiaz</p>{phase==='pre'&&startMs&&countdown(startMs-now)&&<div className="dcount">Starts in {countdown(startMs-now)}</div>}{phase==='live'&&<div className="dcount live">Games are live</div>}{phase==='finale'&&<div className="dcount final">Champions decided</div>}<div className="dreg"><QRCodeSVG value={(origin||'')+'/register'} size={220}/><div><h2>Register here</h2><p>Scan to self-register, then show your reference at any zone.</p><p className="qrlink">{origin}/register</p></div></div></>}
+{cur.k.startsWith('zone:')&&(()=>{const z=cur.z;return <><div className="dzonehead"><div><span className="eyebrow">COMPETITION ZONE</span><h1>{z.name}</h1></div><span className={'badge '+(z.closed?'final':'open')}>{z.closed?'FINAL WINNERS':'PROVISIONAL'}</span></div><div className="dcols">{[['male','M'],['female','F']].map(([g,label])=><section key={g}><h2 className="dgen">{label}</h2>{top5(z.results,z.metric,g).map((r:Item)=><div className={'rank rank'+r.rank} key={r.entry+'-'+r.value+'-'+r.rank}><b className={r.rank<=3?['medal1','medal2','medal3'][r.rank-1]:''}>{r.rank}</b><div><strong>{r.name}</strong><small>{r.org}</small></div><strong>{fmtV(z.metric,r.value)}</strong></div>)}{!top5(z.results,z.metric,g).length&&<div className="empty">Waiting for results</div>}</section>)}</div></>;})()}
+{cur.k==='champs'&&<><span className="eyebrow">CHAMPIONS</span><h1>Hall of fame</h1><div className="dchamps">{finals.map((z:Item)=><section key={z.id}><h2>{z.name}</h2>{[['male','M'],['female','F']].map(([g,icon])=>{const w=top5(z.results,z.metric,g)[0];return w?<p key={g}><b>{icon} {w.name}</b> <strong>{fmtV(z.metric,w.value)}</strong></p>:null;})}</section>)}</div></>}{cur.k==='thanks'&&<div className="dthanks"><h1>Thank You</h1><p>Thank you for coming and participating in the event.<br/>We feel honored to have you.</p><div className="dthankslogos"><img src="/Onplan%20logo%20white.png" alt="Onplan Real Estate"/><img src="/Imtiaz%20logo.svg" alt="Imtiaz"/></div></div>}
+</div>
+{d.message&&!VIDEOS[cur.k]&&<div className="dticker"><div><span>{d.message}</span><span>{d.message}</span></div></div>}
+{cur.k!=='thanks'&&<div className="dfoot">{Math.floor(now/2500)%2?clock(now):dmy(now)}</div>}
+<div className="dnav"><button onClick={()=>document.documentElement.requestFullscreen?.()}>Fullscreen</button></div>
+</main>;}

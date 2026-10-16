@@ -25,3 +25,15 @@ export function dupEntry(entries: any[], email: string, phone: string) {
         (e.phone || '') === phone),
   );
 }
+
+export function nextRef(entries: any[], gender: string) {
+  const prefix = gender === 'female' ? 'F' : 'M';
+  const start = gender === 'female' ? 2001 : 1001;
+  let max = start - 1;
+  for (const e of entries) {
+    const m =
+      typeof e.id === 'string' && e.id.match(new RegExp('^' + prefix + '-(\\d+)$'));
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return prefix + '-' + (max + 1);
+}

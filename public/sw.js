@@ -1,7 +1,7 @@
-/* Kore challenge service worker: app-shell offline support.
+/* Kore fitness challenge service worker: app-shell offline support.
    API calls are network-first (never served stale); static assets are
    cache-first; navigations fall back to the cached home shell. */
-const VERSION = 'kore-v1';
+const VERSION = 'kore-v2';
 const SHELL = ['/', '/register', '/staff-login', '/manifest.webmanifest'];
 const STATIC_RE = /\/_next\/static\/|\/icons\/|\.svg$|\.png$|\.ico$/;
 

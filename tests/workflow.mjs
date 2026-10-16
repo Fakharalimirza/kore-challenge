@@ -1,12 +1,12 @@
-﻿import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';import assert from 'node:assert/strict';import {webcrypto} from 'node:crypto';
-const validators={textl:(v,max=160)=>typeof v==='string'?v.trim().slice(0,max):'',normEmail:(v)=>{const e=typeof v==='string'?v.trim().toLowerCase().slice(0,160):'';return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)?e:'';},normPhone:(v)=>{const p=typeof v==='string'?v.replace(/[\s\-().]/g,'').slice(0,32):'';return /^\+?[0-9]{7,15}$/.test(p)?p:'';},parseAge:(v)=>{const n=typeof v==='number'?v:Number(String(v??'').trim());return Number.isInteger(n)&&n>=3&&n<=100?n:null;},dupEntry:(entries,email,phone)=>entries.find((e)=>e.type==='individual'&&((e.email||'').toLowerCase()===email||(e.phone||'')===phone))};
+import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';import assert from 'node:assert/strict';import {webcrypto} from 'node:crypto';
+const validators={textl:(v,max=160)=>typeof v==='string'?v.trim().slice(0,max):'',normEmail:(v)=>{const e=typeof v==='string'?v.trim().toLowerCase().slice(0,160):'';return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)?e:'';},normPhone:(v)=>{const p=typeof v==='string'?v.replace(/[\s\-().]/g,'').slice(0,32):'';return /^\+?[0-9]{7,15}$/.test(p)?p:'';},parseAge:(v)=>{const n=typeof v==='number'?v:Number(String(v??'').trim());return Number.isInteger(n)&&n>=3&&n<=100?n:null;},dupEntry:(entries,email,phone)=>entries.find((e)=>e.type==='individual'&&((e.email||'').toLowerCase()===email||(e.phone||'')===phone)),nextRef:(entries,gender)=>{const prefix=gender==='female'?'F':'M';const start=gender==='female'?2001:1001;let max=start-1;for(const e of entries){const m=typeof e.id==='string'&&e.id.match(new RegExp('^'+prefix+'-(\\d+)$'));if(m)max=Math.max(max,parseInt(m[1],10));}return prefix+'-'+(max+1);}};
 const b64e=(buf)=>Buffer.from(buf).toString('base64');const b64d=(s)=>Uint8Array.from(Buffer.from(s,'base64'));
 async function pbkdf(pw,salt,iter){const key=await webcrypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);return await webcrypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},key,256);}
 const staffAuth={STAFF_SESSION_COOKIE:'__staff_session',STAFF_SESSION_TTL_MS:86400000,hashPassword:async(pw)=>{const salt=webcrypto.getRandomValues(new Uint8Array(16));const bits=await pbkdf(pw,salt,120000);return {salt:b64e(salt),hash:b64e(bits),iter:120000};},verifyPassword:async(pw,rec)=>{try{const salt=b64d(rec.salt);const bits=await pbkdf(pw,salt,rec.iter);const a=new Uint8Array(bits);const b=b64d(rec.hash);if(a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a[i]^b[i];return d===0;}catch{return false;}},parseSessionCookie:(h)=>{if(!h)return null;for(const part of h.split(';')){const [k,...r]=part.trim().split('=');if(k==='__staff_session'){const v=r.join('=');if(/^[A-Za-z0-9_-]{16,128}$/.test(v))return v;}}return null;},sessionCookie:(t,age)=>`__staff_session=${t??''}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${t?age:0}`};
 function makeDb(){let row=null;return {get row(){return row},prepare(sql){let args=[];return {bind(...a){args=a;return this},async first(){return row?structuredClone(row):null},async run(){if(sql.startsWith('INSERT')&&!row)row={id:1,owner:args[0],revision:0,data:args[1]};if(sql.startsWith('UPDATE')){if(args.length>1&&row.revision!==args[1])return {meta:{changes:0}};row.data=args[0];row.revision++;}return {meta:{changes:1}}}}}};}
 let testCookie='';
 const emailOut=[];
-const emailLib={emailConfig:(env)=>{const key=String(env?.RESEND_API_KEY||'');const from=String(env?.EMAIL_FROM||'');const base=String(env?.APP_URL||'').replace(/\/$/,'');if(!key||!from)return null;return {key,from,base};},sendEmail:async(env,to,subject,html)=>{const cfg=emailLib.emailConfig(env);const list=(Array.isArray(to)?to:[to]).filter(Boolean);if(!cfg||!list.length)return 'skipped';emailOut.push({url:'https://api.resend.com/emails',body:{from:cfg.from,to:list,subject,html}});return {status:'sent',detail:''};},mailParticipant:(base,name,ref,acts)=>({subject:`You're registered! Ref ${ref} â€” Sports Day`,html:`${name}${ref}${acts.join(',')}`}),mailTeamMember:(base,name,team,ref,acts,mates)=>({subject:`You've been added to team ${team} (${ref})`,html:`${name}${team}${mates.join(',')}`}),mailCoach:(base,email,name,acts,pw)=>({subject:'Coach access â€” Sports Day',html:`${email}${pw||''}`}),mailAdmin:(base,email,name,pw)=>({subject:'Admin access â€” Sports Day',html:`${email}${pw||''}`})};
+const emailLib={emailConfig:(env)=>{const key=String(env?.RESEND_API_KEY||'');const from=String(env?.EMAIL_FROM||'');const base=String(env?.APP_URL||'').replace(/\/$/,'');if(!key||!from)return null;return {key,from,base};},sendEmail:async(env,to,subject,html)=>{const cfg=emailLib.emailConfig(env);const list=(Array.isArray(to)?to:[to]).filter(Boolean);if(!cfg||!list.length)return 'skipped';emailOut.push({url:'https://api.resend.com/emails',body:{from:cfg.from,to:list,subject,html}});return {status:'sent',detail:''};},mailParticipant:(base,name,ref,acts)=>({subject:`You're registered! Ref ${ref} — Sports Day`,html:`${name}${ref}${acts.join(',')}`}),mailTeamMember:(base,name,team,ref,acts,mates)=>({subject:`You've been added to team ${team} (${ref})`,html:`${name}${team}${mates.join(',')}`}),mailCoach:(base,email,name,acts,pw)=>({subject:'Coach access — Sports Day',html:`${email}${pw||''}`}),mailAdmin:(base,email,name,pw)=>({subject:'Admin access — Sports Day',html:`${email}${pw||''}`})};
 function loadRoute(path,ctx){const raw=fs.readFileSync(path,'utf8').replace(/^import.*$/mg,'');const code=ts.transpileModule(raw,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const sandbox={exports:{},Response,Request,crypto:webcrypto,fetch:async(url,opts)=>{emailOut.push({url,body:JSON.parse(opts.body)});return {ok:true,json:async()=>({id:'em_1'})}},headers:async()=>({get:(n)=>n==='cookie'?(testCookie?'__staff_session='+testCookie:null):null}),getDb:()=>ctx.env.DB,...validators,...staffAuth,...emailLib,...ctx};vm.runInNewContext(code,sandbox);return sandbox.exports;}
 // ---- admin event route ----
 const db=makeDb();
@@ -89,7 +89,7 @@ assert.equal((await lsend({action:'login',email:'pwcoach@test.com',password:'sec
 emailEnv.RESEND_API_KEY='re_test';emailEnv.EMAIL_FROM='Field Day <test@resend.dev>';emailEnv.APP_URL='https://example.test';
 testCookie=ownerToken;
 assert.equal((await send({action:'entry',name:'Em',gender:'male',email:'em@test.com',phone:'+923007777777',age:20,type:'individual',activities:['a1']})).status,200);
-assert.equal(emailOut.length,1);assert.deepEqual(emailOut[0].body.to,['em@test.com']);assert.ok(emailOut[0].body.subject.includes('SD-'));
+assert.equal(emailOut.length,1);assert.deepEqual(emailOut[0].body.to,['em@test.com']);assert.ok(emailOut[0].body.subject.includes('M-'));
 assert.equal((await send({action:'coach',email:'mailcoach@test.com',password:'coachpw1',activities:['a0']})).status,200);
 assert.ok(emailOut.some((m)=>m.body.to.includes('mailcoach@test.com')&&m.body.html.includes('coachpw1')));
 assert.equal((await send({action:'addAdmin',email:'mailadmin@test.com',password:'adminpw1'})).status,200);
@@ -169,8 +169,30 @@ const acts=(await g.json()).activities;assert.equal(acts.length,5);
 async function rsend(b){const r=await reg.POST(new Request('https://test/api/register',{method:'POST',body:JSON.stringify(b)}));return {status:r.status,body:await r.json()};}
 assert.equal((await rsend({name:'Solo',gender:'male',email:'solo@test.com',phone:'+923002222222',age:16,activities:['a0']})).status,200);
 const selfId=(await rsend({name:'Solo2',gender:'female',email:'solo2@test.com',phone:'+923003333333',age:16,activities:['a0']})).body.id;
-assert.ok(/^SD-/.test(selfId));
+assert.equal(selfId,'F-2001');
 assert.equal((await rsend({name:'Solo3',gender:'male',email:'solo@test.com',phone:'+923004444444',age:16,activities:['a0']})).status,409);
 assert.equal((await rsend({name:'Solo4',gender:'male',email:'solo4@test.com',phone:'+923002222222',age:16,activities:['a0']})).status,409);
 assert.equal((await rsend({name:'Solo5',gender:'male',email:'solo5@test.com',phone:'+923005555555',age:16,activities:['a3']})).status,200);
-console.log('PASS: owner setup, password login, 5 zones, duration scoring, registration, self-reg, teams, approvals, admin roles, sessions, emails, reset.');
+// ---- public standings feed + schedule ----
+const db4=makeDb();const staff4=loadRoute('app/api/staff-login/route.ts',{env:{DB:db4}});
+async function l4send(b){const r=await staff4.POST(new Request('https://test/api/staff-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}));return {status:r.status,body:await r.json()};}
+assert.equal((await l4send({action:'setup',name:'O4',email:'o4@test.com',password:'ownerpass4'})).status,200);
+const api4=loadRoute('app/api/event/route.ts',{env:{DB:db4}});
+testCookie=JSON.parse(db4.row.data).sessions[0].token;
+async function send4(b,rev){const s4=db4.row.revision;const r=await api4.POST(new Request('https://test/api/event',{method:'POST',body:JSON.stringify({...b,revision:rev??s4})}));return {status:r.status,body:await r.json()};}
+assert.equal((await send4({action:'entry',name:'Wall One',gender:'male',email:'w1@test.com',phone:'+923006060606',age:20,type:'individual'})).status,200);
+const w1=JSON.parse(db4.row.data).entries[0].id;
+assert.equal((await send4({action:'result',entry:w1,activity:'a0',value:30})).status,200);
+const wrid=JSON.parse(db4.row.data).results[0].id;
+assert.equal((await send4({action:'review',id:wrid,status:'approved'})).status,200);
+assert.equal((await send4({action:'eventConfig',date:'bad',start:'10:00',end:'13:00',message:'Hi'})).status,400);
+assert.equal((await send4({action:'eventConfig',date:'2026-11-01',start:'10:00',end:'13:00',message:'Awards at 1:15pm'})).status,200);
+const standing=loadRoute('app/api/standings/route.ts',{env:{DB:db4}});
+const sg=await standing.GET();assert.equal(sg.status,200);
+const sj=await sg.json();
+assert.equal(sj.zones.length,5);assert.equal(sj.times.date,'2026-11-01');assert.equal(sj.message,'Awards at 1:15pm');
+assert.equal(sj.zones[0].results.length,1);assert.equal(sj.zones[0].results[0].name,'Wall One');
+const dump=JSON.stringify(sj);
+assert.ok(!dump.includes('w1@test.com')&&!dump.includes('+923006060606')&&!dump.includes('pass')&&!dump.includes('sessions')&&!dump.includes('ownerEmail')&&!dump.includes('o4@test.com'));
+testCookie=ownerToken;
+console.log('PASS: owner setup, password login, 5 zones, duration scoring, registration, self-reg, teams, approvals, admin roles, sessions, emails, reset, standings, schedule.');
